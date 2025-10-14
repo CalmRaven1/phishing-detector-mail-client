@@ -1,11 +1,13 @@
 import pickle
+import logging
+from flask import Flask, request, jsonify
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
 
 # Load the saved model and vectorizer
 with open("classifier.py", "rb") as f:
     vectorizer, model = pickle.load(f)
-
-from flask import Flask, request, jsonify
-
 app = Flask(__name__)
 
 # Dummy emails
@@ -45,4 +47,19 @@ def send_email():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
+@app.route("/test", methods=["GET"])
+def test_classify():
+    mock_email = {
+        "subject": "Claim your free iPhone!",
+        "body": "Click the link to get your prize",
+        "sender": "scammer@example.com"
+    }
+    X = vectorizer.transform([mock_email["body"]])
+    prediction = model.predict(X)[0]
+    return jsonify({"mock_email_prediction": prediction})
+    logging.info(f"Email body: {email_text}")
+    logging.info(f"Prediction: {prediction}")
+
+
 
