@@ -1,3 +1,9 @@
+import pickle
+
+# Load the saved model and vectorizer
+with open("classifier.py", "rb") as f:
+    vectorizer, model = pickle.load(f)
+
 from flask import Flask, request, jsonify
 
 app = Flask(__name__)
@@ -19,14 +25,11 @@ def classify():
     data = request.get_json()
     email_text = data.get("body", "")
     
-    # Dummy classifier logic
-    if "click" in email_text.lower() or "won" in email_text.lower():
-        prediction = "Phishing"
-    else:
-        prediction = "Safe"
+    X = vectorizer.transform([email_text])
+    prediction = model.predict(X)[0]
     
     return jsonify({"prediction": prediction})
-
+    
 # Route: /send
 @app.route("/send", methods=["POST"])
 def send_email():
@@ -42,3 +45,4 @@ def send_email():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
