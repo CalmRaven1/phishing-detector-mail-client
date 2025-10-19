@@ -1,14 +1,17 @@
 import pickle
 import logging
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 
 # Load the saved model and vectorizer
-with open("classifier.py", "rb") as f:
+with open("model.pkl", "rb") as f:
     vectorizer, model = pickle.load(f)
+
 app = Flask(__name__)
+CORS(app)  # allow frontend connections
 
 # Dummy emails
 emails = [
@@ -24,14 +27,22 @@ def inbox():
 # Route: /classify
 @app.route("/classify", methods=["POST"])
 def classify():
-    data = request.get_json()
-    email_text = data.get("body", "")
-    
-    X = vectorizer.transform([email_text])
-    prediction = model.predict(X)[0]
-    
-    return jsonify({"prediction": prediction})
-    
+    try:
+        data = request.get_json()
+        email_text = data.get("body", "")
+        if not email_text:
+            return jsonify({"error": "No email body provided"}), 400
+
+        X = vectorizer.transform([email_text])
+        prediction = model.predict(X)[0]
+
+        logging.info(f"Email classified — Prediction: {prediction}, Body: {email_text}")
+        return jsonify({"prediction": prediction})
+
+    except Exception as e:
+        logging.error(str(e))
+        return jsonify({"error": "Classification failed"}), 500
+
 # Route: /send
 @app.route("/send", methods=["POST"])
 def send_email():
@@ -43,11 +54,10 @@ def send_email():
         "sender": data.get("sender", "me@example.com")
     }
     emails.append(new_email)
+    logging.info(f"New email added: {new_email}")
     return jsonify({"status": "Email sent", "email": new_email})
 
-if __name__ == "__main__":
-    app.run(debug=True)
-
+# Route: /test
 @app.route("/test", methods=["GET"])
 def test_classify():
     mock_email = {
@@ -57,9 +67,9 @@ def test_classify():
     }
     X = vectorizer.transform([mock_email["body"]])
     prediction = model.predict(X)[0]
+    logging.info(f"Mock email classified — Prediction: {prediction}")
     return jsonify({"mock_email_prediction": prediction})
-    logging.info(f"Email body: {email_text}")
-    logging.info(f"Prediction: {prediction}")
 
-
-
+# Run Flask server
+if __name__ == "__main__":
+    app.run(debug=True)
